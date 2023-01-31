@@ -4,6 +4,8 @@ import { AppService } from './app.service';
 import { CoffeeModule } from './coffee/coffee.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FlavorModule } from './flavor/flavor.module';
+// class-validate无法使用
+// typeorm迁移功能无法使用 
 @Module({
   imports: [
     CoffeeModule,

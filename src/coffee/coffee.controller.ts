@@ -21,7 +21,7 @@ export class CoffeeController {
   findAll(@Query() query) {
     // const { limit, offset } = query;
     // return `all coffee ${limit} ${offset}`;
-    return this.coffeeService.findAll();
+    return this.coffeeService.findAll(query);
   }
   @Get(':id')
   findOne(@Param('id') id: string) {

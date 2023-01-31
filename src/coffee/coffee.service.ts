@@ -4,14 +4,17 @@ import {
   HttpCode,
   HttpStatus,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
 import { CreateCoffeeDto } from './dto/create-coffee.dto';
 import { Coffee } from './entities/coffee.entity';
 import { UpdateCoffeeDto } from './dto/update-coffee.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Connection, Repository } from 'typeorm';
 import { Flavor } from './entities/flavor.entity';
-
+import { QueryDto } from '../common/dto/query.dto';
+import { Event } from 'src/event/entities/event.entity';
+import { query } from 'express';
 @Injectable()
 export class CoffeeService {
   constructor(
@@ -19,9 +22,38 @@ export class CoffeeService {
     private readonly coffeeRepository: Repository<Coffee>,
     @InjectRepository(Flavor)
     private readonly flavorRepository: Repository<Flavor>,
-  ) {}
-  async findAll() {
-    return await this.coffeeRepository.find({ relations: ['flavors'] });
+    private readonly connection: Connection,
+    @Inject('COFFEE_BRAND') brand: string[],
+  ) {
+    console.log(brand);
+  }
+  async findAll(queryDto: QueryDto) {
+    const { limit, offset } = queryDto;
+    return await this.coffeeRepository.find({
+      relations: ['flavors'],
+      skip: offset,
+      take: limit,
+    });
+  }
+  async recommendCoffee(coffee: Coffee) {
+    const queryRunner = this.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    // 创建事务，
+    try {
+      coffee.recommendation++;
+      const recommendEvent = new Event();
+      recommendEvent.name = 'recommend_coffee';
+      recommendEvent.type = 'coffee';
+      recommendEvent.payload = { coffeeId: coffee.id };
+      await queryRunner.manager.save(coffee);
+      await queryRunner.manager.save(recommendEvent);
+      await queryRunner.commitTransaction();
+    } catch {
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
   }
   async update(id: string, updateCoffeeDto: UpdateCoffeeDto) {
     const flavors =
